@@ -23,7 +23,7 @@ node_controller = request.XenVM('controller')
 node_controller.disk_image = 'urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU22-64-STD'
 
 # Execute script, installing controller dependencies (RYU).
-node.addService(pg.Execute(shell="sh", command="/local/repository/controller.sh"))
+node_controller.addService(pg.Execute(shell="sh", command="/local/repository/controller.sh"))
 
 # Print the generated rspec
 pc.printRequestRSpec(request)
