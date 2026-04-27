@@ -1,14 +1,26 @@
 #!/bin/bash
+set -euxo pipefail
 
-# Exit on error
-set -e
+exec > /tmp/controller-setup.log 2>&1
 
 echo "Updating package list..."
 sudo apt-get update
 
 echo "Installing dependencies..."
-sudo apt-get install -y gcc python3-dev libffi-dev libssl-dev libxml2-dev libxslt1-dev zlib1g-dev
-sudo apt-get install -y python3-pip git
+sudo apt-get install -y \
+    gcc \
+    git \
+    python3-pip \
+    python3-venv \
+    python3-dev \
+    libffi-dev \
+    libssl-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    zlib1g-dev
+
+echo "Move to /local..."
+cd /local
 
 echo "Cloning Ryu repository..."
 if [ ! -d "ryu" ]; then
@@ -17,9 +29,19 @@ else
     echo "Ryu repo already exists, skipping clone."
 fi
 
+echo "Creating Python virtual environment..."
+python3 -m venv /local/ryu-venv
+source /local/ryu-venv/bin/activate
+
+echo "Upgrading pip..."
+python -m pip install --upgrade pip setuptools wheel
+
 echo "Installing Ryu..."
-cd ryu
-pip3 install -r tools/pip-requires
-python3 setup.py install
+cd /local/ryu
+python -m pip install .
+
+echo "Verifying installation..."
+python -c "import ryu; print(ryu.__file__)"
+which ryu-manager || true
 
 echo "Ryu installation complete!"
