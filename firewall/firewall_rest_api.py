@@ -48,11 +48,26 @@ class FirewallController(ControllerBase):
                 self.app.drop_flow(datapath, priority=20, match=match)  # <-- actually pushes to OVS
 
         return json.dumps({'status': 'rule installed', 'rule': body})
-
+    
     @route('firewall', '/firewall/rules/{rule_id}', methods=['DELETE'])
     def delete_rule(self, req, rule_id, **kwargs):
         rule_id = int(rule_id)
         if rule_id < len(self.app.firewall_rules):
             removed = self.app.firewall_rules.pop(rule_id)
+
+            # Remove the drop flow from OVS
+            src_ip = removed.get('src_ip')
+            dst_ip = removed.get('dst_ip')
+
+            for dpid, datapath in self.app.datapaths.items():
+                parser = datapath.ofproto_parser
+                match_kwargs = {'eth_type': 0x0800}
+                if src_ip:
+                    match_kwargs['ipv4_src'] = src_ip
+                if dst_ip:
+                    match_kwargs['ipv4_dst'] = dst_ip
+                match = parser.OFPMatch(**match_kwargs)
+                self.app.remove_flow(datapath, match)  # <-- actually removes from OVS
+
             return json.dumps({'status': 'deleted', 'rule': removed})
         return json.dumps({'status': 'error', 'msg': 'Rule not found'})

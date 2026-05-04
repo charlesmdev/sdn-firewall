@@ -30,6 +30,18 @@ class SDNFirewall(app_manager.RyuApp):
                                 match=match, instructions=inst)
         datapath.send_msg(mod)
 
+    def remove_flow(self, datapath, match):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        mod = parser.OFPFlowMod(
+            datapath=datapath,
+            command=ofproto.OFPFC_DELETE,      # <-- DELETE command, not ADD
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            match=match
+        )
+        datapath.send_msg(mod)
+
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         datapath = ev.msg.datapath
