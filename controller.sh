@@ -1,13 +1,17 @@
-#!/bin/bash
-set -euxo pipefail
+#!/bin/sh
 
+# Exit immediately if a command fails
+set -eux
+
+# Log output
 exec > /tmp/controller-setup.log 2>&1
 
 echo "Updating package list..."
-sudo apt-get update
+sudo apt update
+sudo apt upgrade -y
 
 echo "Installing dependencies..."
-sudo apt-get install -y \
+sudo apt install -y \
     gcc \
     git \
     python3-pip \
@@ -19,29 +23,39 @@ sudo apt-get install -y \
     libxslt1-dev \
     zlib1g-dev
 
-echo "Move to /local..."
+echo "Moving to /local..."
 cd /local
 
 echo "Cloning Ryu repository..."
-if [ ! -d "ryu" ]; then
-    git clone https://github.com/osrg/ryu.git
+if [ ! -d "/local/ryu" ]; then
+    sudo git clone https://github.com/osrg/ryu.git
 else
-    echo "Ryu repo already exists, skipping clone."
+    echo "Ryu repository already exists, skipping clone."
 fi
 
 echo "Creating Python virtual environment..."
-python3 -m venv /local/ryu-venv
-source /local/ryu-venv/bin/activate
+if [ ! -d "/local/ryu-venv" ]; then
+    python3 -m venv /local/ryu-venv
+fi
 
-echo "Upgrading pip..."
+# Activate venv
+. /local/ryu-venv/bin/activate
+
+echo "Upgrading pip tools..."
 python -m pip install --upgrade pip setuptools wheel
 
 echo "Installing Ryu..."
 cd /local/ryu
 python -m pip install .
 
-echo "Verifying installation..."
+echo "Verifying Ryu installation..."
 python -c "import ryu; print(ryu.__file__)"
-which ryu-manager || true
+
+if command -v ryu-manager >/dev/null 2>&1; then
+    echo "ryu-manager installed successfully:"
+    which ryu-manager
+else
+    echo "WARNING: ryu-manager not found in PATH"
+fi
 
 echo "Ryu installation complete!"
