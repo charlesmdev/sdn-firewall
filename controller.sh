@@ -11,8 +11,6 @@ sudo apt-get install -y \
     gcc \
     git \
     curl \
-    mininet \
-    openvswitch-switch \
     python3-pip \
     python3-venv \
     python3-dev \
@@ -23,7 +21,10 @@ sudo apt-get install -y \
     zlib1g-dev
 
 echo "Creating Python virtual environment..."
-python3 -m venv /local/ryu-venv
+if [ ! -d /local/ryu-venv ]; then
+    python3 -m venv /local/ryu-venv
+fi
+
 source /local/ryu-venv/bin/activate
 
 echo "Installing Python build tools compatible with Ryu..."
@@ -43,11 +44,8 @@ sed -i "s/from eventlet.wsgi import ALREADY_HANDLED/ALREADY_HANDLED = object()/g
 echo "Verifying Ryu installation..."
 ryu-manager --version || true
 
-echo "Verifying Mininet installation..."
-sudo mn --test pingall || true
-sudo mn -c || true
-
-echo "Ryu and Mininet setup complete!"
-echo "To use:"
+echo "Controller setup complete!"
+echo "To start the Ryu firewall controller:"
 echo "source /local/ryu-venv/bin/activate"
+echo "cd /local/repository/firewall"
 echo "ryu-manager firewall_rest_api.py"
