@@ -31,11 +31,12 @@ for i in range(1, 5):
     )
     hosts.append(host)
 
-# Connect each host to the switch
+# Connect each host to the switch.
+# Do not assign IPs here because CloudLab requires either all members
+# of a link to have IP/mask values or none of them.
+# host.sh assigns the 10.0.0.x/24 address after boot.
 for i, host in enumerate(hosts, start=1):
     host_if = host.addInterface("host{}-if".format(i))
-    host_if.addAddress(pg.IPv4Address("10.0.0.{}".format(i), "255.255.255.0"))
-
     switch_if = switch.addInterface("switch-if{}".format(i))
 
     link = request.Link("link-host{}-switch".format(i))
