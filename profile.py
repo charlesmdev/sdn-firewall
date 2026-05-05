@@ -21,24 +21,24 @@ switch.addService(pg.Execute(shell="sh", command="/local/repository/switch.sh"))
 # Host nodes
 hosts = []
 for i in range(1, 5):
-    host = request.XenVM(f"host{i}")
+    host = request.XenVM("host{}".format(i))
     host.disk_image = IMAGE
     host.addService(
         pg.Execute(
             shell="sh",
-            command=f"/local/repository/host.sh 10.0.0.{i}/24"
+            command="/local/repository/host.sh 10.0.0.{}/24".format(i)
         )
     )
     hosts.append(host)
 
 # Connect each host to the switch
 for i, host in enumerate(hosts, start=1):
-    host_if = host.addInterface(f"host{i}-if")
-    host_if.addAddress(pg.IPv4Address(f"10.0.0.{i}", "255.255.255.0"))
+    host_if = host.addInterface("host{}-if".format(i))
+    host_if.addAddress(pg.IPv4Address("10.0.0.{}".format(i), "255.255.255.0"))
 
-    switch_if = switch.addInterface(f"switch-if{i}")
+    switch_if = switch.addInterface("switch-if{}".format(i))
 
-    link = request.Link(f"link-host{i}-switch")
+    link = request.Link("link-host{}-switch".format(i))
     link.addInterface(host_if)
     link.addInterface(switch_if)
 
