@@ -2,8 +2,8 @@
 set -euxo pipefail
 
 # Usage: bash host.sh <HOST_NUMBER> <SWITCH_IP>
-# Example (on host1): bash host.sh 1 172.17.245.6
-# Example (on host2): bash host.sh 2 172.17.245.6
+# Example (on host1): bash host.sh 1 10.10.1.2
+# Example (on host2): bash host.sh 2 10.10.2.2
 # Virtual IPs: host1=192.168.100.2, host2=.3, host3=.4, host4=.5
 
 HOST_NUM="${1:-}"
