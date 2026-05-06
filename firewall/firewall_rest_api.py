@@ -42,18 +42,26 @@ class FirewallController(ControllerBase):
     def build_match(self, datapath, rule):
         parser = datapath.ofproto_parser
 
-        match_kwargs = {
-            'eth_type': 0x0800
-        }
+        match_kwargs = {'eth_type': 0x0800}
 
         src_ip = rule.get('src_ip')
         dst_ip = rule.get('dst_ip')
+        proto  = rule.get('proto')
+        dst_port = rule.get('dst_port')
 
         if src_ip:
             match_kwargs['ipv4_src'] = src_ip
-
         if dst_ip:
             match_kwargs['ipv4_dst'] = dst_ip
+
+        if proto == 'tcp':
+            match_kwargs['ip_proto'] = 6
+            if dst_port:
+                match_kwargs['tcp_dst'] = int(dst_port)
+        elif proto == 'udp':
+            match_kwargs['ip_proto'] = 17
+            if dst_port:
+                match_kwargs['udp_dst'] = int(dst_port)
 
         return parser.OFPMatch(**match_kwargs)
 
