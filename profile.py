@@ -1,29 +1,39 @@
-"""Homework lab 2 controller profile with Ubuntu 22 image."""
+"""CloudLab SDN firewall profile with 1 controller, 1 switch, and 4 hosts."""
 
-#
-# NOTE: This code was machine converted. An actual human would not
-#       write code like this!
-#
-
-# Import the Portal object.
 import geni.portal as portal
-# Import the ProtoGENI library.
 import geni.rspec.pg as pg
-# Import the Emulab specific extensions.
-import geni.rspec.emulab as emulab
 
-# Create a portal object,
 pc = portal.Context()
-
-# Create a Request object to start building the RSpec.
 request = pc.makeRequestRSpec()
 
-# Node controller
-node_controller = request.XenVM('controller')
-node_controller.disk_image = 'urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU22-64-STD'
+IMAGE = "urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU22-64-STD"
 
-# Execute script, installing controller dependencies (RYU).
-node_controller.addService(pg.Execute(shell="sh", command="/local/repository/controller.sh"))
+controller = request.XenVM("controller")
+controller.disk_image = IMAGE
+controller.addService(pg.Execute(shell="sh", command="/local/repository/controller.sh"))
 
-# Print the generated rspec
+switch = request.XenVM("switch")
+switch.disk_image = IMAGE
+switch.addService(pg.Execute(shell="sh", command="/local/repository/switch.sh"))
+
+hosts = []
+for i in range(1, 5):
+    host = request.XenVM("host{}".format(i))
+    host.disk_image = IMAGE
+    host.addService(
+        pg.Execute(
+            shell="sh",
+            command="/local/repository/host.sh 10.0.0.{}/24".format(i)
+        )
+    )
+    hosts.append(host)
+
+for i, host in enumerate(hosts, start=1):
+    host_if = host.addInterface("host{}-if".format(i))
+    switch_if = switch.addInterface("switch-if{}".format(i))
+
+    link = request.Link("link-host{}-switch".format(i))
+    link.addInterface(host_if)
+    link.addInterface(switch_if)
+
 pc.printRequestRSpec(request)
