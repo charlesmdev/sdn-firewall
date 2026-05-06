@@ -8,17 +8,14 @@ request = pc.makeRequestRSpec()
 
 IMAGE = "urn:publicid:IDN+emulab.net+image+emulab-ops//UBUNTU22-64-STD"
 
-# Controller node
 controller = request.XenVM("controller")
 controller.disk_image = IMAGE
 controller.addService(pg.Execute(shell="sh", command="/local/repository/controller.sh"))
 
-# Switch node
 switch = request.XenVM("switch")
 switch.disk_image = IMAGE
 switch.addService(pg.Execute(shell="sh", command="/local/repository/switch.sh"))
 
-# Host nodes
 hosts = []
 for i in range(1, 5):
     host = request.XenVM("host{}".format(i))
@@ -31,10 +28,6 @@ for i in range(1, 5):
     )
     hosts.append(host)
 
-# Connect each host to the switch.
-# Do not assign IPs here because CloudLab requires either all members
-# of a link to have IP/mask values or none of them.
-# host.sh assigns the 10.0.0.x/24 address after boot.
 for i, host in enumerate(hosts, start=1):
     host_if = host.addInterface("host{}-if".format(i))
     switch_if = switch.addInterface("switch-if{}".format(i))
