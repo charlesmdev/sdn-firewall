@@ -127,7 +127,15 @@ class SDNFirewall(app_manager.RyuApp):
         if ip_pkt:
             src_ip = ip_pkt.src
             dst_ip = ip_pkt.dst
-            proto = ip_pkt.proto
+            proto_num = ip_pkt.proto
+
+            if proto_num == 6:
+                proto = 'tcp'
+            elif proto_num == 17:
+                proto = 'udp'
+            else:
+                proto = str(proto_num)
+
             dst_port = None
 
             tcp_pkt = pkt.get_protocol(tcp.tcp)
