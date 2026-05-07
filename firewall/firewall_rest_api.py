@@ -32,7 +32,7 @@ class FirewallController(ControllerBase):
         self.app = data[firewall_instance_name]
 
     def json_response(self, data):
-        body = json.dumps(data).encode('utf-8')
+        body = (json.dumps(data) + '\n').encode('utf-8')
         return Response(
             content_type='application/json',
             charset='utf-8',
