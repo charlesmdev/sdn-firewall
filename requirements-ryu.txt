@@ -1,0 +1,8 @@
+pip<24
+setuptools<58
+wheel<0.38
+ryu==4.34
+eventlet==0.31.1
+dnspython==1.16.0
+rich
+requests

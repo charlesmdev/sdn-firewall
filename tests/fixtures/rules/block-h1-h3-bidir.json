@@ -1,0 +1,24 @@
+{
+  "name": "Block h1 and h3 ICMP",
+  "description": "Bidirectional ping block between h1 and h3",
+  "enabled": true,
+  "priority": 100,
+  "action": "block",
+  "direction": "bidirectional",
+  "stateful": false,
+  "match": {
+    "src_ip": "10.0.0.1",
+    "dst_ip": "10.0.0.3",
+    "proto": "icmp"
+  },
+  "scope": {
+    "switches": "all"
+  },
+  "logging": {
+    "enabled": true,
+    "sample_rate": 1.0
+  },
+  "stats": {
+    "enabled": true
+  }
+}

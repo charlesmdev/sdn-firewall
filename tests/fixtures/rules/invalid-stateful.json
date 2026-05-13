@@ -1,0 +1,13 @@
+{
+  "name": "Invalid stateful rule",
+  "description": "Stateful rules are reserved for a later phase",
+  "action": "block",
+  "direction": "one-way",
+  "stateful": true,
+  "match": {
+    "src_ip": "10.0.0.1",
+    "dst_ip": "10.0.0.2",
+    "proto": "tcp",
+    "dst_port": 22
+  }
+}
