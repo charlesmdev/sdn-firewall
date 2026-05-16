@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.py[cod]
+firewall/rules.json
+firewall/rules.json.tmp
+.pytest_cache/

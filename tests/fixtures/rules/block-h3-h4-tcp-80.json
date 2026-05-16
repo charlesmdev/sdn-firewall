@@ -1,0 +1,25 @@
+{
+  "name": "Block h3 to h4 HTTP",
+  "description": "TCP destination-port filtering example",
+  "enabled": true,
+  "priority": 110,
+  "action": "block",
+  "direction": "one-way",
+  "stateful": false,
+  "match": {
+    "src_ip": "10.0.0.3",
+    "dst_ip": "10.0.0.4",
+    "proto": "tcp",
+    "dst_port": 80
+  },
+  "scope": {
+    "switches": "all"
+  },
+  "logging": {
+    "enabled": true,
+    "sample_rate": 1.0
+  },
+  "stats": {
+    "enabled": true
+  }
+}

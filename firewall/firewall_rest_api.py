@@ -2,6 +2,7 @@ from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from ryu.base import app_manager
 from webob import Response
 from firewall_controller import SDNFirewall
+from policy import RuleValidationError
 import json
 
 
@@ -32,79 +33,125 @@ class FirewallController(ControllerBase):
         self.app = data[firewall_instance_name]
 
     def json_response(self, data):
+        return self._json_response(data)
+
+    def _json_response(self, data, status=200):
         body = (json.dumps(data) + '\n').encode('utf-8')
         return Response(
+            status=status,
             content_type='application/json',
             charset='utf-8',
             body=body
         )
 
-    def build_match(self, datapath, rule):
-        parser = datapath.ofproto_parser
+    def error_response(self, code, message, field=None, status=400):
+        return self._json_response({
+            'status': 'error',
+            'error': {
+                'code': code,
+                'message': message,
+                'field': field
+            }
+        }, status=status)
 
-        match_kwargs = {'eth_type': 0x0800}
+    def parse_json(self, req):
+        try:
+            body = req.body.decode('utf-8') if req.body else '{}'
+            return json.loads(body)
+        except (TypeError, ValueError):
+            raise RuleValidationError('request body must be valid JSON', code='invalid_json')
 
-        src_ip = rule.get('src_ip')
-        dst_ip = rule.get('dst_ip')
-        proto  = rule.get('proto')
-        dst_port = rule.get('dst_port')
+    def handle_validation_error(self, exc):
+        status = 501 if exc.code == 'not_implemented' else 400
+        return self.error_response(exc.code, exc.message, exc.field, status=status)
 
-        if src_ip:
-            match_kwargs['ipv4_src'] = src_ip
-        if dst_ip:
-            match_kwargs['ipv4_dst'] = dst_ip
-
-        if proto == 'tcp':
-            match_kwargs['ip_proto'] = 6
-            if dst_port:
-                match_kwargs['tcp_dst'] = int(dst_port)
-        elif proto == 'udp':
-            match_kwargs['ip_proto'] = 17
-            if dst_port:
-                match_kwargs['udp_dst'] = int(dst_port)
-
-        return parser.OFPMatch(**match_kwargs)
+    @route('firewall', '/firewall/health', methods=['GET'])
+    def health(self, req, **kwargs):
+        return self._json_response({
+            'status': 'ok',
+            'rules': len(self.app.rule_store.list()),
+            'switches': len(self.app.datapaths)
+        })
 
     @route('firewall', '/firewall/rules', methods=['GET'])
     def list_rules(self, req, **kwargs):
-        return self.json_response(self.app.firewall_rules)
+        return self._json_response(self.app.rule_store.list())
 
     @route('firewall', '/firewall/rules', methods=['POST'])
     def add_rule(self, req, **kwargs):
-        body = json.loads(req.body.decode('utf-8'))
+        try:
+            rule, installs = self.app.create_rule(self.parse_json(req))
+        except RuleValidationError as exc:
+            return self.handle_validation_error(exc)
 
-        self.app.firewall_rules.append(body)
+        return self._json_response({
+            'status': 'created',
+            'rule': rule,
+            'flows_installed': installs
+        }, status=201)
 
-        action = body.get('action', 'block')
+    @route('firewall', '/firewall/rules/{rule_id}', methods=['GET'])
+    def get_rule(self, req, rule_id, **kwargs):
+        rule = self.app.rule_store.get(rule_id)
+        if rule is None:
+            return self.error_response('not_found', 'Rule not found', 'rule_id', status=404)
+        return self._json_response(rule)
 
-        if action == 'block':
-            for dpid, datapath in self.app.datapaths.items():
-                match = self.build_match(datapath, body)
-                self.app.drop_flow(datapath, priority=20, match=match)
-
-        return self.json_response({
-            'status': 'rule installed',
-            'rule_id': len(self.app.firewall_rules) - 1,
-            'rule': body
+    @route('firewall', '/firewall/rules/{rule_id}', methods=['PATCH'])
+    def update_rule(self, req, rule_id, **kwargs):
+        try:
+            rule, installs = self.app.update_rule(rule_id, self.parse_json(req))
+        except RuleValidationError as exc:
+            return self.handle_validation_error(exc)
+        if rule is None:
+            return self.error_response('not_found', 'Rule not found', 'rule_id', status=404)
+        return self._json_response({
+            'status': 'updated',
+            'rule': rule,
+            'flows_installed': installs
         })
 
     @route('firewall', '/firewall/rules/{rule_id}', methods=['DELETE'])
     def delete_rule(self, req, rule_id, **kwargs):
-        rule_id = int(rule_id)
-
-        if rule_id < 0 or rule_id >= len(self.app.firewall_rules):
-            return self.json_response({
-                'status': 'error',
-                'msg': 'Rule not found'
-            })
-
-        removed = self.app.firewall_rules.pop(rule_id)
-
-        for dpid, datapath in self.app.datapaths.items():
-            match = self.build_match(datapath, removed)
-            self.app.delete_drop_flow(datapath, match)
-
-        return self.json_response({
-            'status': 'deleted and flow removed',
-            'rule': removed
+        removed, flow_removals = self.app.delete_rule(rule_id)
+        if removed is None:
+            return self.error_response('not_found', 'Rule not found', 'rule_id', status=404)
+        return self._json_response({
+            'status': 'deleted',
+            'rule': removed,
+            'flows_removed': flow_removals
         })
+
+    @route('firewall', '/firewall/switches', methods=['GET'])
+    def list_switches(self, req, **kwargs):
+        return self._json_response(self.app.get_switches())
+
+    @route('firewall', '/firewall/topology', methods=['GET'])
+    def topology(self, req, **kwargs):
+        return self._json_response(self.app.get_topology())
+
+    @route('firewall', '/firewall/topology/anomalies', methods=['GET'])
+    def topology_anomalies(self, req, **kwargs):
+        return self._json_response(self.app.get_topology_anomalies())
+
+    @route('firewall', '/firewall/stats', methods=['GET'])
+    def stats(self, req, **kwargs):
+        return self._json_response(self.app.get_stats())
+
+    @route('firewall', '/firewall/rules/{rule_id}/stats', methods=['GET'])
+    def rule_stats(self, req, rule_id, **kwargs):
+        rule = self.app.rule_store.get(rule_id)
+        if rule is None:
+            return self.error_response('not_found', 'Rule not found', 'rule_id', status=404)
+        numeric_id = rule['id']
+        stats = self.app.stats_cache.get(numeric_id, {
+            'rule_id': numeric_id,
+            'packet_count': 0,
+            'byte_count': 0,
+            'per_switch': {}
+        })
+        return self._json_response(stats)
+
+    @route('firewall', '/firewall/events', methods=['GET'])
+    def events(self, req, **kwargs):
+        return self._json_response(list(self.app.event_log))
